@@ -67,12 +67,12 @@ function neuron_handle(model, modelParams)
     time = 0;
 
     while quit == 0
-%         input = cos(time*tau*0.05);
-%         time = time + 1;
-%         if(time > 100)
-%             time = 0;
-%         end
-        input = DEFAULT_INPUT;
+        input = cos(time*tau*0.05);
+        time = time + 1;
+        if(time > 100)
+            time = 0;
+        end
+        
 
         % Use appropriate model to get membrane potential
         switch model
