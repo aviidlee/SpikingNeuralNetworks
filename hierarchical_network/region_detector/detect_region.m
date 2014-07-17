@@ -3,15 +3,19 @@
 % inertia-dissolver.
 % 
 % @param events - DVS events in the form [x; y; pol; t]
+% @return firingTimes - row vector of DVS timestamps when neuron fired.
+%         MP - row vector of membrane potentials at each timestamp.
 % TODO
 %     plot the firing times 
 %     display firing together with dvs video
 %     abstract out components so they can be changed and switched out.
-function firingTimes = detect_region(events)
+function [firingTimes, MP] = detect_region(events)
     threshold = 10;
     resting = 0;
     mp = 0;
     increaseBy = 0.5;
+    % Matrix of membrane potentials 
+    MP = resting;
 
     % Choose a region of interest; for now, hard-coded to be some small
     % rectangle.
@@ -21,7 +25,7 @@ function firingTimes = detect_region(events)
     ymax = 40;
     
     % Store the firing times (in terms of dvs timestamp) of this neuron.
-    firingTimes = []
+    firingTimes = [];
 
     % Loop through events
     for t = events
@@ -32,17 +36,17 @@ function firingTimes = detect_region(events)
         if xmin < t(1) && xmax > t(1) && ymin < t(2) && ymax > t(2)
             mp = mp + increaseBy;
         end
-
+        
         % Currently, no MP decay.
         % If MP > threshold, fire.
         if mp > threshold
-            disp('Firing!')
             % Add the timestamp to firingTimes
             % Hard to preallocate firingTimes, what to do?
-            firingTimes = [firingTimes, t(4)]
+            firingTimes = [firingTimes, t(4)];
             % Reset MP 
             mp = resting;
         end
-
+        
+        MP = [MP, mp];
     end 
 end 

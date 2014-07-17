@@ -33,8 +33,8 @@ function visualise_network(events)
     [xsize, ysize] = size(events);
     %set figure properties
     video = figure('color','white');
-    set(video, 'Name', 'Visualise Network', 'Units','normalized', ...
-        'Position', [0.05, 0.45, 0.5, 0.5]); 
+    % set(video, 'Name', 'Visualise Network', 'Units','normalized', ...
+    %    'Position', [0.05, 0.45, 0.5, 0.5]); 
     %find out the starting timestamp (in microseconds)
     plottime = events(1,4)
 
@@ -44,17 +44,30 @@ function visualise_network(events)
 
     %set figure to grayscale
     colormap(gray)
-    background = subplot(4, 2, 1);
-    set(background, 'Units', 'normalized', 'Position', [0.05 0.45 0.5 0.5]);
+    dvs = subplot(2, 2, 1);
+    % set(background, 'Units', 'normalized', 'Position', [0.05 0.45 0.5 0.5]);
     axis equal
+    
     %---- Set up for neuron firing plot --------------------------------------
-
-
+    neuron = subplot(2, 2, 3);
+    % set(neuron, 'Position', [0.05 0.1 0.4 0.4]);
+    % Get the firing times and membrane potential trace. 
+    [firingTimes, MP] = detect_region(events');
+    % Line for plotting membrane potential 
+    vtrace=line('color','k','LineStyle','-','erase','background', ...
+        'xdata',[],'ydata',[],'zdata',[]);
+    title('membrane potential, v')
+    xlabel('timestamp');
+    
     for j = 1:xsize
         % Break data into FRAMETIME microsecond blocks
         ind = find(events(:,4) >= plottime & events(:,4)<=plottime+FRAMETIME);
+        
+        % Update "current time"
         plottime = plottime + FRAMETIME;
-
+        
+        % Switch to the correct subplot...
+        subplot(2, 2, 1);
         %set up the background for the matrix to display
         background = zeros(128,128);
 
@@ -64,21 +77,28 @@ function visualise_network(events)
        for k = ind(1,1):ind(size(ind),1)
            background(events(k,2)+1, events(k,1)+1) = events(k,3);
        end
-
-       %set up the escape root for the for loop (I need to change this)
-        if plottime > events(xsize,4)
-            break;
-        end
+      
         %end
         %set the size of the image
         xlim([0, 128])
         ylim([0, 128])
 
-        %display the stuff in real time (not sure if necessary yet)
-        drawnow;
         %flip the images the correct way around again
         background = flipud(background);
         %actually display the images at the speed of the for loop
         imagesc(background);
+        
+        % Plot neuron
+        subplot(2, 2, 3);
+        times = events(ind, 4);
+        plot(times, MP(ind));
+        % set(vtrace, 'xdata', times, 'ydata', MP(ind));
+        % set up the escape root for the for loop (I need to change this)
+        if plottime > events(xsize,4)
+            break;
+        end
+        
+        %display the stuff in real time (not sure if necessary yet)
+        drawnow;
     end
 end
