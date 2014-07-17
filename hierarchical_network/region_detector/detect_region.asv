@@ -2,12 +2,12 @@
 % This is terribly, terribly inefficient. This is only an
 % inertia-dissolver.
 % 
-% @param events - DVS events in the form [x; y; pol; t]
+
 % TODO
 %     plot the firing times 
 %     display firing together with dvs video
 %     abstract out components so they can be changed and switched out.
-function firingTimes = detect_region(events)
+function firingTimes = detect_region()
     threshold = 10;
     resting = 0;
     mp = 0;
@@ -22,13 +22,16 @@ function firingTimes = detect_region(events)
     
     % Store the firing times (in terms of dvs timestamp) of this neuron.
     firingTimes = []
+    
+    % Transpose events so that an event is a column.
+    eventT = events';
 
     % Loop through events
-    for t = events
+    for t = eventT
         % if something pops up in ROI, increase MP,
         % amount of MP increase depends on similarity to
         % what it was trained on.
-        % events is otf [x; y; pol; t]
+        % eventT is otf [x; y; pol; t]
         if xmin < t(1) && xmax > t(1) && ymin < t(2) && ymax > t(2)
             mp = mp + increaseBy;
         end
