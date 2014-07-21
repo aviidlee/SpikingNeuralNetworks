@@ -27,9 +27,9 @@ for i=1:it
     % Store history of weights.
     pastWeights(i, :) = W;
     % Get the output by summing weighted inputs. 
-    output = sum(W.*inputs(i, :));
+    output = 
     % Get the weight change.
-    dW = r*inputs(i,:)*output;
+    dW = r*inputs(it,:)*outputs(it);
     % update weights.
     W = W + dW;
     % Keep the weights <= max
