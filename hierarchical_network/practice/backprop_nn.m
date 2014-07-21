@@ -3,6 +3,9 @@
 % Yes we are learning XOR. Sigh.
 
 % Made a mistake somewhere, the darn thing doesn't seem to learn!
+% Well, it does learn, just not very well; plotting difference between target
+% and output against iteration shows that error reduces to a point, after which
+% the neurons don't improve. 
 
 pattern = [0, 0, 0;
     0, 1, 1;
@@ -35,6 +38,10 @@ wo = rand(nh, no);
 % change in weights for momentum...?
 ci = rand(ni, nh);
 co = rand(nh, no);
+
+% for difference between target and actual output.
+% for simplicity, only look at the 1 xor 1 = 0 
+badness = ones(1, it);
 
 for i = 1:it
     error = 0.0;
@@ -76,7 +83,7 @@ for i = 1:it
         %---- Find errors
         % errors for output 
         error = targets - ao;
-        outputDeltas = (1 - ao.^2).*error;
+        outputDeltas = (sech(ao).^2).*error;
         
         % errors for hidden
         hiddenDeltas = ones(1, nh);
@@ -85,7 +92,7 @@ for i = 1:it
             for v = 1:no
                 error = error + outputDeltas(v)*wo(u,v);
             end 
-            hiddenDeltas(u) = (1-ah(u)^2)*error;
+            hiddenDeltas(u) = (sech(u)^2)*error;
         end
         
         % update output weights 
@@ -105,8 +112,7 @@ for i = 1:it
             end
         end
         
-        % print error 
-        disp(targets-ao)
+        badness(i) = targets-ao;
     end
     
 end
