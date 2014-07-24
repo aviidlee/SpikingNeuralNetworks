@@ -22,11 +22,12 @@ function [mpHist, hiddenHist] = sandbox(events)
     lastInput = zeros(gridSize);
     % Weights from input neurons to hidden neuron
     W = randn(gridSize);
+    wInit = [W];
     % Little bit to add/take from weight if neurons fire close in time.
     wCONST = 0.01;
     % How much in time to look backwards for STDP
-    tBACK = 100;
-    tFORWARD = 100;
+    tBACK = 5000;
+    tFORWARD = 5000;
 
     % Set up thresholds; for now all their thresholds are the same
     THRESHOLD = 20;
@@ -52,7 +53,7 @@ function [mpHist, hiddenHist] = sandbox(events)
     % to all neurons then prunes them. Start with one neuron.
     hiddenFirings = 0;
     % Need conduction delays?
-    hiddenThresh = 5;
+    hiddenThresh = 1;
     hiddenDecay = 0.05;
     hiddenResting = 0;
     hiddenMP = hiddenResting;
@@ -118,14 +119,23 @@ function [mpHist, hiddenHist] = sandbox(events)
             firings = [firings; yBottom, xRight, event(4)]; %#ok<*AGROW>
             % update hidden neuron
             hiddenMP = hiddenMP + SPIKE;
+            if isempty(hiddenFirings)
+                disp('No firings of hidden neuron yet')
+            end
             
             % Check if the hidden neuron fired in the recent past
-            ind = find(hiddenFirings >= (timeNow - tBACK));
-            if ~isempty(ind)
-                % Adjust the weight of connection from this input neuron to the
-                % hidden neuron down.
+            if hiddenFirings(end) >= timeNow - tBACK
+                
                 W(yBottom, xRight) = W(yBottom, xRight) - wCONST;
             end
+%             ind = find(hiddenFirings >= (timeNow - tBACK));
+%             timeNow-tBack
+%             if ~isempty(ind)
+%                 disp('Something fired recently');
+%                 % Adjust the weight of connection from this input neuron to the
+%                 % hidden neuron down.
+%                 W(yBottom, xRight) = W(yBottom, xRight) - wCONST;
+%             end
         end
         
         % It is now forever recorded in history.
@@ -164,9 +174,12 @@ function [mpHist, hiddenHist] = sandbox(events)
     
     [r c] = size(hiddenFirings);
     if r > 1
-        hiddenFirings = hiddenFirings(2, :);
+        hiddenFirings = hiddenFirings(2:end, :);
     else 
         disp('Hidden neurons never fired!');
     end 
+    
+    disp('Weight changes');
+    disp(wInit-W)
     
 end
