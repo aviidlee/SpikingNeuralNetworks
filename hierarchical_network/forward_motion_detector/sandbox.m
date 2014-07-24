@@ -1,18 +1,20 @@
-function sandbox(events)
+function [mpHist, hiddenHist] = sandbox(events)
     % divide visual field into gridSize x gridSize grid.
     % To make things nice, keep these as powers of 2, since DVS 128 x 128.
     % Each neuron is sensitive to input in one grid cell.
     gridSize = 16;
 
     % Find the boundaries of the grid
-    bounds = 1:(128/gridSize):129
+    bounds = 1:(128/gridSize):129;
     
     if(nargin == 0)
         % grab some events.
         events = getEvents();
     end
+    
     % Tranpose events.
     eventsT = events';
+    [numEvents throwOut] = size(events);
 
     % Set up membrane potentials
     MP = zeros(gridSize);
@@ -32,9 +34,9 @@ function sandbox(events)
     thresholds = thresholds*THRESHOLD;
     % What to add to membrane potential when event falls into visual field of
     % a particular neuron.
-    ADD = 1;
+    ADD = 5;
     % Decay constant.
-    DECAY = 0.5;
+    DECAY = 0.05;
     % Resting potential.
     RESTING = 0;
     SPIKE = 1;
@@ -42,19 +44,26 @@ function sandbox(events)
     % Need to extend it in the loop so initialise in the correct format with
     % bogus data.
     firings = [-1, -1, -1];
-
+    % History of membrane potential updates, itf 
+    % [rowIndex, colIndex, timestamp, mp]
+    mpHist = zeros(numEvents, 4);
+    
     % Hidden neuron which learns by STDP; initially starts out being connected
     % to all neurons then prunes them. Start with one neuron.
     hiddenFirings = 0;
     % Need conduction delays?
     hiddenThresh = 5;
-    hiddenDecay = 0.5;
+    hiddenDecay = 0.05;
     hiddenResting = 0;
     hiddenMP = hiddenResting;
     hiddenFirings = -1;
     % the last time at which the hidden neuron received a spike
     hiddenInput = 0;
-
+    % Membrane potential history of hidden neuron
+    % itf [timestamp, mp]
+    hiddenHist = zeros(numEvents, 2);
+    
+    eventNo = 1;
     for event = eventsT
         % Minor ickiness due to DVS pixel locations being zero-based and 
         % Matlab indices starting at 1. 
@@ -81,14 +90,15 @@ function sandbox(events)
         if MP(yBottom, xRight) > RESTING
             % Check how much time has passed between the last input and
             % current time, decay appropriately.
-            decay = (timeNow - lastInput(yBottom, xRight)*DECAY);
+            decay = (timeNow - lastInput(yBottom, xRight))*DECAY;
             MP(yBottom, xRight) = max(RESTING, MP(yBottom, xRight) - decay);
         end
+        
         % Leak hidden neuron.
         if hiddenMP > hiddenResting
             % Check how much time has passed between the last input and
             % current time, decay appropriately.
-            decay = (timeNow - hiddenInput*hiddenDecay);
+            decay = (timeNow - hiddenInput)*hiddenDecay;
             hiddenMP = max(hiddenResting, hiddenMP - decay);
         end
 
@@ -99,7 +109,8 @@ function sandbox(events)
 
         % increase the mp of the appropriate neuron.
         MP(yBottom, xRight) = MP(yBottom, xRight) + ADD;
-
+        % add to history of membrane potentials. 
+        mpHist(eventNo, :) = [yBottom, xRight, event(4), MP(yBottom, xRight)];
         % Check if neuron fires.
         if MP(yBottom, xRight) >= THRESHOLD
             MP(yBottom, xRight) = RESTING;
@@ -107,6 +118,7 @@ function sandbox(events)
             firings = [firings; yBottom, xRight, event(4)]; %#ok<*AGROW>
             % update hidden neuron
             hiddenMP = hiddenMP + SPIKE;
+            
             % Check if the hidden neuron fired in the recent past
             ind = find(hiddenFirings >= (timeNow - tBACK));
             if ~isempty(ind)
@@ -115,13 +127,17 @@ function sandbox(events)
                 W(yBottom, xRight) = W(yBottom, xRight) - wCONST;
             end
         end
+        
+        % It is now forever recorded in history.
+        hiddenHist(eventNo, :) = [event(4), hiddenMP];
 
         % Check if hidden neuron fires
-        if hiddenMP > hiddenThresh
-            hiddenMP = hidenResting;
-            hiddenFirings = [hiddenFirings, event(4)];
+        if hiddenMP >= hiddenThresh
+            % disp('Hidden neuron fired');
+            hiddenMP = hiddenResting;
+            hiddenFirings = [hiddenFirings; event(4)];
             % Update weights; which neurons caused the hidden one to fire?
-            [r c] = find(firings(:,3) > (timeNow - tBack));
+            [r c] = find(firings(:,3) > (timeNow - tFORWARD));
             if ~isempty(r)
                 for i = size(r)
                     % Get the yBottom and xRight (indices) out.
@@ -132,6 +148,9 @@ function sandbox(events)
                 end
             end
         end
+        
+        % For index into membrane potential history matrix. 
+        eventNo = eventNo + 1;
 
     end
 
@@ -142,7 +161,8 @@ function sandbox(events)
     else 
         disp('Input neurons never fired!');
     end 
-    [r c] = size(hiddenFirings)
+    
+    [r c] = size(hiddenFirings);
     if r > 1
         hiddenFirings = hiddenFirings(2, :);
     else 
