@@ -1,10 +1,19 @@
 % GUI for displaying DVS image side-by-side with neural network activity,
 % and for modifying network parameters dynamically. 
 % 
+% @param events - the DVS events itf [x, y, pol, timestamp]
+% @param speed - the number of seconds to pause on each iteration of the 
+%                loop so that it doesn't go too fast. 
+%
 % What is current does: 
 %     It can't do any param adjustments dynamically because neural activity
 %     is pre-generated with all the dvs data then displayed. 
-%
+%     
+%       Displays Rob's DVS video and a neuron's membrane potential side-by-side.
+%       Currently it's too fast to see anything 
+%       
+%   TODO 
+%       Make play speed adjustable.
 % What it should eventually do: 
 %     Show a video of the DVS images.
 %     Show a graph or some sort of visualisation of the neurons in the network
@@ -18,11 +27,16 @@
 %     Some code may have been taken from Izhikevich (2003) Which neuron model
 %     Some code may have been taken from Robert Quinn's DVS work, in particular
 %     displayingdata.m
-function visualise_network(events)
+function visualise_network(events, speed, HMP)
     if nargin == 0, % no events matrix provided
         % Load DVS events into matrix otf [x, y, pol, t]
         events = getEvents();
     end
+    
+    % only events provided
+    if nargin == 1
+        speed = 0.01;
+    end 
     
     % The amount of time between each frame? Hard-coded to 10000 microseconds
     % in Rob's original code.
@@ -51,13 +65,25 @@ function visualise_network(events)
     %---- Set up for neuron firing plot --------------------------------------
     neuron = subplot(2, 2, 3);
     % set(neuron, 'Position', [0.05 0.1 0.4 0.4]);
-    % Get the firing times and membrane potential trace. 
-    [firingTimes, MP] = detect_region(events');
+    % Get the membrane potentials of Input and hidden neurons 
+    if nargin < 3
+        [IMP, HMP] = sandbox(events);
+    end 
     % Line for plotting membrane potential 
     vtrace=line('color','k','LineStyle','-','erase','background', ...
         'xdata',[],'ydata',[],'zdata',[]);
     title('membrane potential, v')
     xlabel('timestamp');
+    MP = HMP(:,2);
+    % Maximum membrane potential, for setting axes.
+    maxMP = max(MP);
+    minMP = min(MP);
+    minTime = 0;
+    maxTime = FRAMETIME;
+    axis([minTime maxTime minMP maxMP]);
+    
+    % Gaussian blur filter; default sigma is 0.5
+    gfilter = fspecial('gaussian', 128);
     
     for j = 1:xsize
         % Break data into FRAMETIME microsecond blocks
@@ -88,17 +114,22 @@ function visualise_network(events)
         %actually display the images at the speed of the for loop
         imagesc(background);
         
-        % Plot neuron
+        %=========== Plot neuron ========================
         subplot(2, 2, 3);
-        times = events(ind, 4);
+        % times = events(ind, 4);
+        times = 1:size(ind);
         plot(times, MP(ind));
+        
         % set(vtrace, 'xdata', times, 'ydata', MP(ind));
         % set up the escape root for the for loop (I need to change this)
         if plottime > events(xsize,4)
             break;
         end
         
+        % ========= Plot blurred ================
+        
         %display the stuff in real time (not sure if necessary yet)
         drawnow;
+        pause(speed);
     end
 end
