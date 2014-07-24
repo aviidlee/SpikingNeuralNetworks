@@ -26,9 +26,12 @@ function [mpHist, hiddenHist] = sandbox(events)
     % Little bit to add/take from weight if neurons fire close in time.
     wCONST = 0.01;
     % How much in time to look backwards for STDP
-    tBACK = 5000;
-    tFORWARD = 5000;
-
+    tBACK = 500;
+    tFORWARD = 500;
+    % Cap weight 
+    maxW = 1;
+    minW = -1;
+    
     % Set up thresholds; for now all their thresholds are the same
     THRESHOLD = 20;
     thresholds = ones(gridSize);
@@ -53,8 +56,8 @@ function [mpHist, hiddenHist] = sandbox(events)
     % to all neurons then prunes them. Start with one neuron.
     hiddenFirings = 0;
     % Need conduction delays?
-    hiddenThresh = 1;
-    hiddenDecay = 0.05;
+    hiddenThresh = 2;
+    hiddenDecay = 0.01;
     hiddenResting = 0;
     hiddenMP = hiddenResting;
     hiddenFirings = -1;
@@ -96,12 +99,12 @@ function [mpHist, hiddenHist] = sandbox(events)
         end
         
         % Leak hidden neuron.
-        if hiddenMP > hiddenResting
-            % Check how much time has passed between the last input and
-            % current time, decay appropriately.
-            decay = (timeNow - hiddenInput)*hiddenDecay;
-            hiddenMP = max(hiddenResting, hiddenMP - decay);
-        end
+%         if hiddenMP > hiddenResting
+%             % Check how much time has passed between the last input and
+%             % current time, decay appropriately.
+%             decay = (timeNow - hiddenInput)*hiddenDecay;
+%             hiddenMP = max(hiddenResting, hiddenMP - decay);
+%         end
 
         % Update the last time the neuron saw an input.
         lastInput(yBottom, xRight) = timeNow;
@@ -119,14 +122,10 @@ function [mpHist, hiddenHist] = sandbox(events)
             firings = [firings; yBottom, xRight, event(4)]; %#ok<*AGROW>
             % update hidden neuron
             hiddenMP = hiddenMP + SPIKE;
-            if isempty(hiddenFirings)
-                disp('No firings of hidden neuron yet')
-            end
             
             % Check if the hidden neuron fired in the recent past
             if hiddenFirings(end) >= timeNow - tBACK
-                
-                W(yBottom, xRight) = W(yBottom, xRight) - wCONST;
+                W(yBottom, xRight) = max(minW, W(yBottom, xRight) - wCONST);
             end
 %             ind = find(hiddenFirings >= (timeNow - tBACK));
 %             timeNow-tBack
@@ -154,7 +153,7 @@ function [mpHist, hiddenHist] = sandbox(events)
                     row = firings(r(i), 1);
                     col = firings(r(i), 2);
                     % Update weight.
-                    W(row, col) = W(row, col) + wCONST;
+                    W(row, col) = max(maxW, W(row, col) + wCONST);
                 end
             end
         end
@@ -179,7 +178,8 @@ function [mpHist, hiddenHist] = sandbox(events)
         disp('Hidden neurons never fired!');
     end 
     
-    disp('Weight changes');
-    disp(wInit-W)
+    disp('Weight changes: W - wInit');
+    weightChange = W - wInit
+    imshow(W);
     
 end
